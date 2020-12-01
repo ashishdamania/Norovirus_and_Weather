@@ -1,0 +1,8 @@
+"0","ggplot(merged_final_df_person,aes(factor(month),sum_illnesses)) +"
+"0","  geom_bar(stat=""identity"") +"
+"0","  ylim(0,70000)+"
+"0","  ylab(""Total Illnesses"") +"
+"0","  xlab(""January to December (2000-2018 Aggregate)"")+"
+"0","  ggtitle(""Person-to-person (18 US States)"")+"
+"0","  theme_bw()+"
+"0","  theme_bw(base_size =18)"

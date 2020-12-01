@@ -1,0 +1,4 @@
+"0","ggplot(df_rain_final, aes(year, average_precipitation)) +"
+"0","  geom_point() +"
+"0","  geom_smooth(method = ""lm"") +"
+"0","  facet_grid(~state)"

@@ -1,0 +1,550 @@
+---
+title: "R Notebook"
+author: "ashishdamania"
+date: "10/1/20"
+output:
+  html_document:
+    df_print: paged
+---
+
+
+
+```{r}
+library(MASS)
+library(tidyverse)
+library(broom)
+library(glmmTMB)
+library(geofacet)
+library(gt)
+select <- dplyr::select
+```
+
+
+```{r, warning=F}
+d1 <- readxl::read_xlsx("raw_data/NationalOutbreakPublicDataTool.xlsx")
+```
+
+
+```{r}
+
+d2_person_to_person <- d1 %>%
+  # filter(State=="Wisconsin") %>%
+  arrange(desc(Illnesses)) %>%
+  select(Year, Month, State, Etiology, Illnesses, `Primary Mode`) %>%
+  filter(State != "Multistate") %>%
+  filter(Year > 1999) %>%
+  filter(grepl("Norovirus", Etiology)) %>%
+  filter(`Primary Mode` == "Person-to-person") %>%
+  group_by(State, Year, Month) %>%
+  summarize(sum_illnesses = sum(Illnesses)) %>%
+  mutate(climate_region = case_when(
+    State %in% c("California") ~ "West",
+    State %in% c("Florida","Georgia", "South Carolina") ~ "Southeast",
+    State %in% c("Illinois") ~ "Ohio Valley",
+    State %in% c("Iowa","Wisconsin") ~ "East North Central",
+    State %in% c("Kansas","Texas") ~ "South",
+    State %in% c("Maryland","Massachusetts", "New Jersey", "New York") ~ "Northeast",
+    State %in% c("Minnesota") ~ "Upper Midwest",
+    State %in% c("Montana") ~ "Northern Rockies and Plains",
+    State %in% c("Oregon") ~ "Northwest",
+    State %in% c("Utah") ~ "Southwest"
+  ))
+
+
+```
+
+
+```{r}
+Hmisc::describe(d1)
+```
+
+
+**Since Hawaii is not included in the weather related dataset we need to remove it from the index**
+```{r}
+states_df <- state.name[state.name != "Hawaii"] %>%
+  tibble() %>%
+  mutate(number = 1:n() - 1) %>% #Since the naming is zero indexed
+  rename("state" = 1)
+```
+
+
+
+# Rain
+```{r}
+rain_files <- fs::dir_ls(path = "./raw_data/rain/")
+
+df_rain <- vroom::vroom(rain_files, delim = ",", skip = 5, col_names = FALSE, id = "path") %>%
+  mutate(path = substr(path, 17, 18)) %>%
+  mutate(path = str_remove(path, "-")) %>%
+  select(1:3) %>%
+  mutate(path = as.numeric(path)) %>%
+  rename("number" = 1, "yearMonth" = 2, "average_precipitation" = 3)
+
+
+```
+
+
+
+
+
+
+
+
+## Connect names for the states with the rain dataframe
+```{r}
+df_rain_final <- df_rain %>%
+  inner_join(states_df, by = c("number")) %>%
+  select(state, yearMonth, average_precipitation) %>%
+  mutate(year = as.numeric(substr(yearMonth, 1, 4))) %>%
+  mutate(month = as.numeric(substr(yearMonth, start = 5, stop = 6))) %>%
+  select(state, year, month, average_precipitation)
+
+write_csv(df_rain_final, "./processed_rain_data.csv")
+```
+
+
+```{r}
+Hmisc::describe(df_rain_final)
+```
+
+
+
+```{r}
+ggplot(df_rain_final, aes(year, average_precipitation)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  facet_grid(~state)
+```
+
+#Temperature
+```{r}
+temp_files <- fs::dir_ls(path = "./raw_data/temp/")
+
+df_temp <- vroom::vroom(temp_files, delim = ",", skip = 5, col_names = FALSE, id = "path") %>%
+  mutate(path = substr(path, 17, 18)) %>%
+  mutate(path = str_remove(path, "-")) %>%
+  select(1:3) %>%
+  mutate(path = as.numeric(path)) %>%
+  rename("number" = 1, "yearMonth" = 2, "average_temp" = 3)
+
+
+df_temp_final <- df_temp %>%
+  inner_join(states_df, by = c("number")) %>%
+  select(state, yearMonth, average_temp) %>%
+  mutate(year = as.numeric(substr(yearMonth, 1, 4))) %>%
+  mutate(month = as.numeric(substr(yearMonth, start = 5, stop = 6))) %>%
+  select(state, year, month, average_temp)
+
+write_csv(df_temp_final, "./processed_temp_data.csv")
+
+```
+
+
+
+
+
+
+
+#Population Estimates
+```{r}
+population_df <- read_tsv("raw_data/Bridged-Race Population Estimates 1990-2019.txt") %>%
+  select(state=`State`,year=`Yearly July 1st Estimates`,Population)
+```
+
+
+
+
+
+
+# Merge_data
+```{r}
+
+merged_final_df_person <-df_rain_final %>%
+  inner_join(df_temp_final, by = c("state", "year", "month")) %>%
+  inner_join(population_df,by=c("state","year")) %>%
+  left_join(d2_person_to_person, by = c("state" = "State", "year" = "Year", "month" = "Month")) %>%
+  mutate(sum_illnesses = replace_na(sum_illnesses,0)) %>%
+  mutate(month=as.factor(month))
+   
+```
+
+
+```{r}
+merged_final_df_person %>%
+  group_by(state) %>%
+  summarize(COR=cor(average_precipitation,sum_illnesses,method = c("spearman")))
+```
+# Person to person aggregate count
+```{r}
+ggplot(merged_final_df_person,aes(factor(month),sum_illnesses)) +
+  geom_bar(stat="identity") +
+  ylim(0,70000)+
+  ylab("Total Illnesses") +
+  xlab("January to December (2000-2018 Aggregate)")+
+  ggtitle("Person-to-person (18 US States)")+
+  theme_bw()+
+  theme_bw(base_size =18)
+ggsave("Figure_1.pdf")
+
+```
+
+
+```{r}
+merged_final_df_person %>%
+  group_by(month) %>%
+  summarize(sum_ill = sum(sum_illnesses) )
+```
+
+
+
+## Correlation values table (Table 1)
+
+```{r, warning=FALSE}
+person_cor_temp <- merged_final_df_person %>%
+  group_by(state) %>%
+  nest() %>%
+  mutate(cor  = map(data, ~cor.test(.x$average_temp, .x$sum_illnesses, method = c("spearman"))),
+         tidy = map(cor, tidy)) %>%
+  unnest(tidy) %>%
+  select(state,estimate,p.value)
+
+person_cor_precp <- merged_final_df_person %>%
+  group_by(state) %>%
+  nest() %>%
+  mutate(cor  = map(data, ~cor.test(.x$average_precipitation, .x$sum_illnesses, method = c("spearman"))),
+         tidy = map(cor, tidy)) %>%
+  unnest(tidy)%>%
+  select(state,estimate,p.value)
+
+to_gt2 <- cbind(person_cor_temp,person_cor_precp) %>%
+  select("State"=1, "Temperature"=2,"temp_p_value"=3,"percp_cor"=5,"precp_p_value"=6) %>%
+  mutate(Temperature=round(Temperature,digits=3)) %>%
+  mutate(temp_p_value = round(temp_p_value,digits=3)) %>%
+  mutate(percp_cor= round(percp_cor,digits=3)) %>%
+  mutate(precp_p_value=round(precp_p_value,digits = 3))  %>%
+    arrange(State)
+
+  gt_tbl2 <- gt(data=to_gt2) %>%
+  tab_header(
+    title="Person to person",
+  ) %>%
+     cols_label(
+      Temperature="Spearman's rho",
+    temp_p_value = "P-value",
+     percp_cor= "Spearman's rho",
+    precp_p_value = "P-value"
+  ) %>%
+    tab_style(
+    style = list(
+      cell_borders(
+        sides = "left",
+        color = "black",
+        weight = px(3)
+      )
+    ),
+    locations = list(
+      cells_body(
+        columns = vars(percp_cor)
+      )
+    )
+  ) %>%
+    
+     tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(
+      columns = vars(temp_p_value),
+      rows = temp_p_value <= 0.05)
+  ) %>%
+       tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(
+      columns = vars(precp_p_value),
+      rows = precp_p_value <= 0.05)
+  ) %>%
+
+    
+     tab_spanner(
+    label = "Temperature",
+    columns = vars(Temperature,temp_p_value)
+  ) %>%
+  tab_spanner(
+    label = "Precipitation",
+    columns = vars(percp_cor,precp_p_value)
+  )  %>%
+    
+text_transform(
+    locations = cells_body(
+      columns = vars(precp_p_value,temp_p_value)),
+    fn = function(x) {
+      paste0(
+        dplyr::case_when(x <= 0.001  ~ "<0.001",
+                         TRUE ~ as.character(x))
+        )
+    }
+  )
+  
+
+
+
+
+
+
+  gt_tbl2 %>%
+    gtsave("Table_1.rtf")
+```
+
+
+
+
+
+
+
+
+
+
+
+## Create grid removing Hawaii and Alaska
+```{r}
+us_state_grid_custom <- us_state_grid2 %>%
+  filter(!name %in% c("Alaska","Hawaii")) %>%
+  mutate(name=case_when(
+    !name %in% unique(merged_final_df_person$state) ~ code,
+    TRUE ~ as.character(name)
+  ))
+```
+
+
+
+
+```{r}
+merged_final_df_person_merge <- merged_final_df_person %>%
+  mutate(Mode=paste("Person to person")) %>%
+  group_by(Mode,state,month) %>%
+  summarize(mean_sum_illness=mean(sum_illnesses/Population)*100000,mean_temp = mean(average_temp), mean_precip= mean(average_precipitation)) %>%
+ mutate(mean_sum_illness=scales:::rescale(mean_sum_illness,to=c(0,100))) %>%
+  #ungroup() %>%
+  mutate(mean_temp=scales:::rescale(mean_temp,to=c(0,100))) %>%
+  mutate(mean_precip=scales:::rescale(mean_precip,to=c(0,100)))
+```
+
+
+
+
+
+
+
+
+```{r}
+
+merged_final_df_person_figure2 <- merged_final_df_person_merge  %>%
+  ungroup()%>%
+  dplyr::select(state,mean_sum_illness, `Mean monthly temperature`=mean_temp, `Mean monthly precipitation`=mean_precip) %>%
+  pivot_longer(!c(state,mean_sum_illness), names_to=c("Weather parameter"),values_to="value") %>%
+  mutate(`Weather parameter`=factor(`Weather parameter`,levels=c("Mean monthly temperature","Mean monthly precipitation")))
+
+ggplot(merged_final_df_person_figure2,aes(value
+,mean_sum_illness,color=`Weather parameter`)) +
+  geom_point(alpha=0.8)+
+  geom_smooth(method = "lm",se=FALSE,size=2) +
+  scale_colour_manual(values = c("Mean monthly temperature" = "#e34a33","Mean monthly precipitation" = "#3182bd"))+
+  ylim(0,100)+
+  ylab("Total Illnesses")+
+  facet_wrap(~ state,ncol = 3) +
+  theme_bw(base_size =18)+
+  theme(  strip.text.x = element_text(size=rel(0.75)))+
+  theme(axis.text.x = element_text(face = "bold", size = 9))+
+  theme(axis.text.y = element_text(face = "bold", size = 9))+
+  theme(legend.key = element_blank(),  strip.background = element_rect(colour=NA, fill=NA),
+ panel.border = element_rect(fill = NA, color = "black")) +
+  ylab("Monthly illness count")+
+  xlab("Weather parameter value")+
+  ggtitle("Mean monthly illness count and weather parameter (Scaled 0-100)")
+
+ggsave("Figure_2.pdf", width=10,height=11)
+```
+
+
+
+
+
+
+```{r}
+ggplot(merged_final_df_person_figure2,aes(value
+,mean_sum_illness,color=`Weather parameter`)) +
+  geom_point()+
+  #geom_smooth(se=FALSE, method = "loess")+
+  geom_smooth(method = lm, se = FALSE)+
+  #geom_line(data=geo_food,aes(mean_temp,mean_sum_illness), inherit.aes = FALSE)+
+  #geom_smooth(data=geo_food,aes(mean_temp,mean_sum_illness), inherit.aes = FALSE, se=FALSE)+
+  ylim(0,100)+
+  ylab("Total Illnesses")+
+  xlab("Monthly mean Temperature")+
+  facet_geo(~ state, grid = us_state_grid_custom, label = "name") +
+  theme_bw(base_size = 12)
+
+ggsave("map2_33.pdf",scale=0.9, width=20,height=10)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Person to Person Histogram
+
+
+```{r}
+ggplot(merged_final_df_person, aes(x=sum_illnesses)) + 
+geom_histogram(aes(y=..count..), colour="black", fill="white", bins = 100)+
+theme_bw()+
+ylab("Frequency") +
+xlab("Illnesses count")+
+ggtitle("Norovirus Trasmission: Person-to-person (18 US States)")
+hist(merged_final_df_person$sum_illnesses)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Negative Binomial regression
+```{r}
+fp2 <- glmmTMB(sum_illnesses ~ average_precipitation + average_temp +month   + (1|state), ziformula= ~average_precipitation + average_temp +month , offset =  log(Population),
+               data=merged_final_df_person, family = nbinom1, REML=F)
+
+summary(fp2)
+```
+
+```{r}
+
+#Get conditional model IRR
+person_conditional_mod <- data.frame(confint(fp2, level=0.95)) %>%
+  add_rownames(., var = "variable") %>%
+  rename("lower CI"=2,"upper CI"=3 ) %>%
+  mutate(across(c(2:4),exp)) %>%
+  mutate(across(c(2:4),round,digits=3)) %>%
+  select(variable, Estimate, `lower CI`,`upper CI`) %>%
+  slice(1:14)
+
+#Get Zero-inflation model IRR
+person_zero_inf_mod <- data.frame(confint(fp2, level=0.95)) %>%
+  add_rownames(., var = "variable") %>%
+  rename("lower CI"=2,"upper CI"=3 ) %>%
+  mutate(across(c(2:4),exp)) %>%
+  mutate(across(c(2:4),round,digits=3)) %>%
+  select(variable, Estimate, `lower CI`,`upper CI`) %>%
+  slice(16:n())
+
+#Get P-values related to coeffients
+s_fp2 <- summary(fp2)
+
+person_conditional_mod_pvalues <- data.frame(s_fp2$coefficients$cond) %>%
+  add_rownames(., var = "variable") %>%
+  mutate(IRR=round(exp(Estimate), digits = 3)) %>%
+  mutate(Estimate=round(Estimate,digits = 3)) %>%
+  select(variable,z.value,"p-values"=5)
+
+person_zero_info_mod_pvalues <- data.frame(s_fp2$coefficients$zi) %>%
+  add_rownames(., var = "variable") %>%
+  mutate(IRR=round(exp(Estimate), digits = 3)) %>%
+  mutate(Estimate=round(Estimate,digits = 3)) %>%
+  select(variable,z.value,"p-values"=5)
+
+
+
+
+person_contional_zi_for_gt <- cbind(person_conditional_mod, 
+      person_conditional_mod_pvalues,
+      person_zero_inf_mod,
+      person_zero_info_mod_pvalues) %>%
+janitor::clean_names() %>%
+  select(-c(variable_2,variable_3,variable_4)) %>%
+  mutate(estimate=paste0(estimate," (",lower_ci,"-",upper_ci,")")) %>%
+  mutate(estimate_2=paste0(estimate_2," (",lower_ci_2,"-",upper_ci_2,")")) %>%
+  select(variable, estimate,p_values,estimate_2,p_values_2) %>%
+  mutate(p_values=round(p_values,digits=3),
+         p_values_2=round(p_values_2,digits = 3)) 
+  
+  
+  
+
+gt(person_contional_zi_for_gt) %>%
+   tab_header(
+    title="Person to person",
+  ) %>%
+     tab_spanner(
+    label = "Conditional model",
+    columns = vars(estimate,p_values)
+  ) %>%
+  tab_spanner(
+    label = "Zero-inflation model",
+    columns = vars(estimate_2,p_values_2)
+  )  %>%
+   text_transform(
+    locations = cells_body(
+      columns = vars(p_values,p_values_2)),
+    fn = function(x) {
+      paste0(
+        dplyr::case_when(x <= 0.001  ~ "<0.001",
+                         TRUE ~ as.character(x))
+        )
+    }
+  ) %>%
+  gtsave("Table_2.rtf")
+  
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

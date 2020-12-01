@@ -1,0 +1,5 @@
+"0","merged_final_df_person %>%"
+"0","  group_by(state) %>%"
+"0","  summarize(COR=cor(average_precipitation,sum_illnesses,method = c(""spearman"")))"
+"2","`summarise()` ungrouping output (override with `.groups` argument)
+"

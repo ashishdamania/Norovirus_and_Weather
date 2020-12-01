@@ -1,0 +1,16 @@
+"0","ggplot(merged_final_df_person_figure2,aes(value"
+"0",",mean_sum_illness,color=`Weather parameter`)) +"
+"0","  geom_point()+"
+"0","  #geom_smooth(se=FALSE, method = ""loess"")+"
+"0","  geom_smooth(method = lm, se = FALSE)+"
+"0","  #geom_line(data=geo_food,aes(mean_temp,mean_sum_illness), inherit.aes = FALSE)+"
+"0","  #geom_smooth(data=geo_food,aes(mean_temp,mean_sum_illness), inherit.aes = FALSE, se=FALSE)+"
+"0","  ylim(0,100)+"
+"0","  ylab(""Total Illnesses"")+"
+"0","  xlab(""Monthly mean Temperature"")+"
+"0","  facet_geo(~ state, grid = us_state_grid_custom, label = ""name"") +"
+"0","  theme_bw(base_size = 12)"
+"2","Note: You provided a user-specified grid. If this is a generally-useful grid, please consider
+  submitting it to become a part of the geofacet package. You can do this easily by calling:
+  grid_submit(__grid_df_name__)
+"

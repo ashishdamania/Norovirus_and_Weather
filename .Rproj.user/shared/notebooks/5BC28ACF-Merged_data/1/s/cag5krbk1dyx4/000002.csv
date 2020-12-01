@@ -1,0 +1,10 @@
+"0","merged_final_df_person_merge <- merged_final_df_person %>%"
+"0","  mutate(Mode=paste(""Person to person"")) %>%"
+"0","  group_by(Mode,state,month) %>%"
+"0","  summarize(mean_sum_illness=mean(sum_illnesses/Population)*100000,mean_temp = mean(average_temp), mean_precip= mean(average_precipitation)) %>%"
+"0"," mutate(mean_sum_illness=scales:::rescale(mean_sum_illness,to=c(0,100))) %>%"
+"0","  #ungroup() %>%"
+"0","  mutate(mean_temp=scales:::rescale(mean_temp,to=c(0,100))) %>%"
+"0","  mutate(mean_precip=scales:::rescale(mean_precip,to=c(0,100)))"
+"2","`summarise()` regrouping output by 'Mode', 'state' (override with `.groups` argument)
+"

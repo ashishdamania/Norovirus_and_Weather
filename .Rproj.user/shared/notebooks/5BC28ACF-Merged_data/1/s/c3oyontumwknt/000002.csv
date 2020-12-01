@@ -1,0 +1,4 @@
+"0","states_df <- state.name[state.name != ""Hawaii""] %>%"
+"0","  tibble() %>%"
+"0","  mutate(number = 1:n() - 1) %>% #Since the naming is zero indexed"
+"0","  rename(""state"" = 1)"

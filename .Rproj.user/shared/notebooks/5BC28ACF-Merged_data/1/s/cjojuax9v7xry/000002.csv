@@ -1,0 +1,8 @@
+"0",""
+"0","merged_final_df_person <-df_rain_final %>%"
+"0","  inner_join(df_temp_final, by = c(""state"", ""year"", ""month"")) %>%"
+"0","  inner_join(population_df,by=c(""state"",""year"")) %>%"
+"0","  left_join(d2_person_to_person, by = c(""state"" = ""State"", ""year"" = ""Year"", ""month"" = ""Month"")) %>%"
+"0","  mutate(sum_illnesses = replace_na(sum_illnesses,0)) %>%"
+"0","  mutate(month=as.factor(month))"
+"0","   "

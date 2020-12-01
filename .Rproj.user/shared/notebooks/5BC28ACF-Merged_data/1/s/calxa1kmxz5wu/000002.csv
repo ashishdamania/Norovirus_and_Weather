@@ -1,0 +1,22 @@
+"0","population_df <- read_tsv(""raw_data/Bridged-Race Population Estimates 1990-2019.txt"") %>%"
+"0","  select(state=`State`,year=`Yearly July 1st Estimates`,Population)"
+"2","Parsed with column specification:
+cols(
+  Notes = [31mcol_character()[39m,
+  State = [31mcol_character()[39m,
+  `State Code` = [31mcol_character()[39m,
+  `Yearly July 1st Estimates` = [32mcol_double()[39m,
+  `Yearly July 1st Estimates Code` = [32mcol_double()[39m,
+  Population = [32mcol_double()[39m
+)
+"
+"2","32 parsing failures.
+row col  expected    actual                                                       file
+361  -- 6 columns 1 columns 'raw_data/Bridged-Race Population Estimates 1990-2019.txt'
+362  -- 6 columns 1 columns 'raw_data/Bridged-Race Population Estimates 1990-2019.txt'
+363  -- 6 columns 1 columns 'raw_data/Bridged-Race Population Estimates 1990-2019.txt'
+364  -- 6 columns 1 columns 'raw_data/Bridged-Race Population Estimates 1990-2019.txt'
+365  -- 6 columns 1 columns 'raw_data/Bridged-Race Population Estimates 1990-2019.txt'
+... ... ......... ......... ..........................................................
+See problems(...) for more details.
+"

@@ -1,0 +1,16 @@
+"0","rain_files <- fs::dir_ls(path = ""./raw_data/rain/"")"
+"0",""
+"0","df_rain <- vroom::vroom(rain_files, delim = "","", skip = 5, col_names = FALSE, id = ""path"") %>%"
+"0","  mutate(path = substr(path, 17, 18)) %>%"
+"0","  mutate(path = str_remove(path, ""-"")) %>%"
+"0","  select(1:3) %>%"
+"0","  mutate(path = as.numeric(path)) %>%"
+"0","  rename(""number"" = 1, ""yearMonth"" = 2, ""average_precipitation"" = 3)"
+"2","[1mRows:[22m 4,338
+[1mColumns:[22m 4
+[1mDelimiter:[22m "",""
+[32mdbl[39m [3]: X1, X2, X3
+
+[90mUse `spec()` to retrieve the guessed column specification[39m
+[90mPass a specification to the `col_types` argument to quiet this message[39m
+"

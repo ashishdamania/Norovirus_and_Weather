@@ -1,0 +1,8 @@
+"0","df_rain_final <- df_rain %>%"
+"0","  inner_join(states_df, by = c(""number"")) %>%"
+"0","  select(state, yearMonth, average_precipitation) %>%"
+"0","  mutate(year = as.numeric(substr(yearMonth, 1, 4))) %>%"
+"0","  mutate(month = as.numeric(substr(yearMonth, start = 5, stop = 6))) %>%"
+"0","  select(state, year, month, average_precipitation)"
+"0",""
+"0","write_csv(df_rain_final, ""./processed_rain_data.csv"")"

@@ -1,0 +1,6 @@
+"0","ggplot(merged_final_df_person, aes(x=sum_illnesses)) + "
+"0","geom_histogram(aes(y=..count..), colour=""black"", fill=""white"", bins = 100)+"
+"0","theme_bw()+"
+"0","ylab(""Frequency"") +"
+"0","xlab(""Illnesses count"")+"
+"0","ggtitle(""Norovirus Trasmission: Person-to-person (18 US States)"")"

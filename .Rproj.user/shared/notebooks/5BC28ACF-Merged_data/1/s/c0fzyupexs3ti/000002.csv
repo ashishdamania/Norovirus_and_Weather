@@ -1,0 +1,6 @@
+"0","us_state_grid_custom <- us_state_grid2 %>%"
+"0","  filter(!name %in% c(""Alaska"",""Hawaii"")) %>%"
+"0","  mutate(name=case_when("
+"0","    !name %in% unique(merged_final_df_person$state) ~ code,"
+"0","    TRUE ~ as.character(name)"
+"0","  ))"

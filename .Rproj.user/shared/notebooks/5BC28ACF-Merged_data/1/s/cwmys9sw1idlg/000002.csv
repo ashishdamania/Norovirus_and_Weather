@@ -1,0 +1,5 @@
+"0","merged_final_df_person %>%"
+"0","  group_by(month) %>%"
+"0","  summarize(sum_ill = sum(sum_illnesses) )"
+"2","`summarise()` ungrouping output (override with `.groups` argument)
+"
